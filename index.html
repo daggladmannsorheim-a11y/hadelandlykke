@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lykke på Hadeland</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #fff7d6, #f3d27a 35%, #9ac7d9);
+    color: #1f2933;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  h1 {
+    margin: 24px 0 10px;
+    font-size: clamp(32px, 6vw, 64px);
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  .page {
+    width: min(1100px, 96vw);
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+    padding: 10px 0 30px;
+  }
+
+  .wheelArea {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 620px;
+  }
+
+  canvas {
+    width: min(600px, 92vw);
+    height: min(600px, 92vw);
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 18px 45px rgba(0,0,0,.25);
+  }
+
+  .pointer {
+    position: absolute;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 28px solid transparent;
+    border-right: 28px solid transparent;
+    border-top: 70px solid #111827;
+    z-index: 5;
+    filter: drop-shadow(0 4px 4px rgba(0,0,0,.35));
+  }
+
+  .centerButton {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 8px solid white;
+    background: #111827;
+    color: white;
+    font-size: 24px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0,0,0,.35);
+  }
+
+  .centerButton:hover {
+    background: #374151;
+  }
+
+  .panel {
+    background: rgba(255,255,255,.86);
+    border: 1px solid rgba(255,255,255,.9);
+    border-radius: 22px;
+    padding: 18px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  }
+
+  .panel h2 {
+    margin: 0 0 12px;
+    font-size: 22px;
+  }
+
+  label {
+    display: block;
+    font-weight: 700;
+    margin: 12px 0 5px;
+  }
+
+  input {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    font-size: 16px;
+  }
+
+  .smallButton {
+    width: 100%;
+    margin-top: 14px;
+    padding: 12px;
+    border: 0;
+    border-radius: 14px;
+    background: #2563eb;
+    color: white;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .smallButton:hover {
+    background: #1d4ed8;
+  }
+
+  .result {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 16px;
+    background: #111827;
+    color: white;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 900;
+    min-height: 66px;
+  }
+
+  @media (max-width: 850px) {
+    .page {
+      grid-template-columns: 1fr;
+    }
+
+    .wheelArea {
+      min-height: auto;
+      padding-top: 20px;
+    }
+
+    .pointer {
+      top: 0;
+    }
+
+    .centerButton {
+      width: 110px;
+      height: 110px;
+      font-size: 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>Lykke på Hadeland</h1>
+
+<div class="page">
+  <div class="wheelArea">
+    <div class="pointer"></div>
+    <canvas id="wheel" width="700" height="700"></canvas>
+    <button class="centerButton" id="spinBtn">SPINN</button>
+  </div>
+
+  <div class="panel">
+    <h2>Fyll inn feltene</h2>
+
+    <div id="inputs"></div>
+
+    <button class="smallButton" id="updateBtn">Oppdater hjulet</button>
+
+    <div class="result" id="result">Klar?</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+const spinBtn = document.getElementById("spinBtn");
+const updateBtn = document.getElementById("updateBtn");
+const inputsDiv = document.getElementById("inputs");
+const result = document.getElementById("result");
+
+let labels = [
+  "Jevnaker",
+  "Gran",
+  "Lunner",
+  "Brandbu",
+  "Roa",
+  "Grua",
+  "Harestua",
+  "Hadeland"
+];
+
+const colors = [
+  "#ef4444",
+  "#f97316",
+  "#facc15",
+  "#22c55e",
+  "#14b8a6",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899"
+];
+
+let rotation = 0;
+let spinning = false;
+
+function makeInputs() {
+  inputsDiv.innerHTML = "";
+
+  labels.forEach((text, i) => {
+    const label = document.createElement("label");
+    label.textContent = "Felt " + (i + 1);
+
+    const input = document.createElement("input");
+    input.value = text;
+    input.dataset.index = i;
+
+    inputsDiv.appendChild(label);
+    inputsDiv.appendChild(input);
+  });
+}
+
+function updateLabels() {
+  const inputs = inputsDiv.querySelectorAll("input");
+  labels = Array.from(inputs).map((input, i) => {
+    const value = input.value.trim();
+    return value || "Felt " + (i + 1);
+  });
+  drawWheel();
+}
+
+function drawWheel() {
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = 330;
+  const slice = Math.PI * 2 / labels.length;
+
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+
+  for (let i = 0; i < labels.length; i++) {
+    const start = i * slice;
+    const end = start + slice;
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, start, end);
+    ctx.closePath();
+    ctx.fillStyle = colors[i];
+    ctx.fill();
+
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.rotate(start + slice / 2);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "white";
+    ctx.font = "bold 28px system-ui, sans-serif";
+    ctx.shadowColor = "rgba(0,0,0,.45)";
+    ctx.shadowBlur = 4;
+
+    const text = labels[i];
+    wrapText(ctx, text, radius - 32, 8, 180, 30);
+
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.arc(0, 0, 72, 0, Math.PI * 2);
+  ctx.fillStyle = "#111827";
+  ctx.fill();
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "white";
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(" ");
+  let line = "";
+  let lines = [];
+
+  for (let word of words) {
+    const testLine = line + word + " ";
+    if (ctx.measureText(testLine).width > maxWidth && line !== "") {
+      lines.push(line.trim());
+      line = word + " ";
+    } else {
+      line = testLine;
+    }
+  }
+
+  lines.push(line.trim());
+
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+
+  lines.forEach((lineText, index) => {
+    ctx.fillText(lineText, x, startY + index * lineHeight);
+  });
+}
+
+function spin() {
+  if (spinning) return;
+
+  updateLabels();
+
+  spinning = true;
+  result.textContent = "Spinner...";
+
+  const extraSpins = 6 + Math.random() * 5;
+  const randomStop = Math.random() * Math.PI * 2;
+  const startRotation = rotation;
+  const endRotation = rotation + extraSpins * Math.PI * 2 + randomStop;
+  const duration = 4200;
+  const startTime = performance.now();
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 4);
+
+    rotation = startRotation + (endRotation - startRotation) * eased;
+    drawWheel();
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      spinning = false;
+      rotation = rotation % (Math.PI * 2);
+      showWinner();
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function showWinner() {
+  const slice = Math.PI * 2 / labels.length;
+
+  // Nåla står øverst. I canvas er toppen -90 grader.
+  const pointerAngle = -Math.PI / 2;
+
+  let normalized = (pointerAngle - rotation) % (Math.PI * 2);
+  if (normalized < 0) normalized += Math.PI * 2;
+
+  const index = Math.floor(normalized / slice);
+  result.textContent = labels[index];
+}
+
+spinBtn.addEventListener("click", spin);
+updateBtn.addEventListener("click", updateLabels);
+
+makeInputs();
+drawWheel();
+</script>
+
+</body>
+</html>
