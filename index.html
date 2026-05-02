@@ -12,9 +12,10 @@ body{
   color:#1f2933;display:flex;flex-direction:column;align-items:center
 }
 h1{margin:24px 0 10px;font-size:clamp(32px,6vw,64px);text-align:center}
-.page{
+h2{text-align:center;margin:20px 0 10px}
+.section{
   width:min(1100px,96vw);display:grid;grid-template-columns:1fr 340px;
-  gap:24px;align-items:start;padding:10px 0 30px
+  gap:24px;align-items:start;margin-bottom:35px
 }
 .wheelArea{position:relative;display:flex;justify-content:center;align-items:center;min-height:620px}
 canvas{
@@ -24,30 +25,34 @@ canvas{
 .pointer{
   position:absolute;top:18px;left:50%;transform:translateX(-50%);
   width:0;height:0;border-left:28px solid transparent;border-right:28px solid transparent;
-  border-top:70px solid #111827;z-index:5;filter:drop-shadow(0 4px 4px rgba(0,0,0,.35))
+  border-top:70px solid #111827;z-index:5
 }
 .centerButton{
   position:absolute;width:140px;height:140px;border-radius:50%;border:8px solid white;
   background:#111827;color:white;font-size:24px;font-weight:800;cursor:pointer;
   box-shadow:0 10px 25px rgba(0,0,0,.35)
 }
-.centerButton:hover{background:#374151}
+.centerButton:disabled{background:#6b7280;cursor:not-allowed}
 .panel{
-  background:rgba(255,255,255,.86);border-radius:22px;padding:18px;
+  background:rgba(255,255,255,.88);border-radius:22px;padding:18px;
   box-shadow:0 12px 30px rgba(0,0,0,.18)
 }
-label{display:block;font-weight:700;margin:12px 0 5px}
-input{width:100%;padding:11px 12px;border-radius:12px;border:1px solid #cbd5e1;font-size:16px}
+textarea{
+  width:100%;min-height:230px;resize:vertical;padding:12px;border-radius:12px;
+  border:1px solid #cbd5e1;font-size:16px;font-family:inherit
+}
 .smallButton{
   width:100%;margin-top:14px;padding:12px;border:0;border-radius:14px;
   background:#2563eb;color:white;font-weight:800;font-size:16px;cursor:pointer
 }
+.doneButton{background:#16a34a}
 .result{
   margin-top:16px;padding:16px;border-radius:16px;background:#111827;color:white;
   text-align:center;font-size:24px;font-weight:900;min-height:66px
 }
+.note{font-size:14px;color:#475569;margin-top:8px}
 @media(max-width:850px){
-  .page{grid-template-columns:1fr}
+  .section{grid-template-columns:1fr}
   .wheelArea{min-height:auto;padding-top:20px}
   .pointer{top:0}
   .centerButton{width:110px;height:110px;font-size:20px}
@@ -58,239 +63,290 @@ input{width:100%;padding:11px 12px;border-radius:12px;border:1px solid #cbd5e1;f
 
 <h1>Lykke på Hadeland</h1>
 
-<div class="page">
+<h2>Oppgavehjul</h2>
+<div class="section">
   <div class="wheelArea">
     <div class="pointer"></div>
-    <canvas id="wheel" width="700" height="700"></canvas>
-    <button class="centerButton" id="spinBtn">SPINN</button>
+    <canvas id="taskWheel" width="700" height="700"></canvas>
+    <button class="centerButton" id="taskSpinBtn">SPINN</button>
   </div>
 
   <div class="panel">
-    <h2>Fyll inn feltene</h2>
-    <div id="inputs"></div>
-    <button class="smallButton" id="updateBtn">Oppdater hjulet</button>
-    <div class="result" id="result">Klar?</div>
+    <h2>Oppgaver</h2>
+    <textarea id="taskText">Rydde rommet
+Ta ut søpla
+Tømme oppvaskmaskinen
+Dekke bordet
+Støvsuge gangen
+Brette klær
+Vanne blomster
+Rydde sko</textarea>
+    <button class="smallButton" id="taskUpdateBtn">Oppdater oppgavehjul</button>
+    <button class="smallButton doneButton" id="doneBtn" disabled>Oppgaven er gjort</button>
+    <div class="result" id="taskResult">Klar?</div>
+    <div class="note">Skriv én oppgave per linje.</div>
+  </div>
+</div>
+
+<h2>Premiehjul</h2>
+<div class="section">
+  <div class="wheelArea">
+    <div class="pointer"></div>
+    <canvas id="prizeWheel" width="700" height="700"></canvas>
+    <button class="centerButton" id="prizeSpinBtn" disabled>SPINN</button>
+  </div>
+
+  <div class="panel">
+    <h2>Premier</h2>
+    <textarea id="prizeText">10 minutter skjerm
+Velg dessert
+Ekstra godnatthistorie
+Velg musikk
+En liten sjokolade
+Spill et brettspill
+Velg middag
+Fri fra én liten oppgave</textarea>
+    <button class="smallButton" id="prizeUpdateBtn">Oppdater premiehjul</button>
+    <div class="result" id="prizeResult">Låst</div>
+    <div class="note">Premiehjulet åpnes når oppgaven er gjort.</div>
   </div>
 </div>
 
 <script>
-const canvas = document.getElementById("wheel");
-const ctx = canvas.getContext("2d");
-const spinBtn = document.getElementById("spinBtn");
-const updateBtn = document.getElementById("updateBtn");
-const inputsDiv = document.getElementById("inputs");
-const result = document.getElementById("result");
-
-let labels = [
-  "Jevnaker",
-  "Gran",
-  "Lunner",
-  "Brandbu",
-  "Roa",
-  "Grua",
-  "Harestua",
-  "Hadeland"
-];
-
 const colors = [
-  "#ef4444",
-  "#f97316",
-  "#facc15",
-  "#22c55e",
-  "#14b8a6",
-  "#3b82f6",
-  "#8b5cf6",
-  "#ec4899"
+  "#ef4444","#f97316","#facc15","#22c55e",
+  "#14b8a6","#3b82f6","#8b5cf6","#ec4899",
+  "#06b6d4","#84cc16","#f43f5e","#a855f7"
 ];
 
-let rotation = 0;
-let spinning = false;
-let chosenIndex = null;
+function makeWheel(config){
+  const canvas = document.getElementById(config.canvasId);
+  const ctx = canvas.getContext("2d");
+  const spinBtn = document.getElementById(config.spinBtnId);
+  const updateBtn = document.getElementById(config.updateBtnId);
+  const textarea = document.getElementById(config.textareaId);
+  const result = document.getElementById(config.resultId);
 
-function makeInputs() {
-  inputsDiv.innerHTML = "";
+  let labels = [];
+  let rotation = 0;
+  let spinning = false;
+  let chosenIndex = null;
 
-  labels.forEach((text, i) => {
-    const label = document.createElement("label");
-    label.textContent = "Felt " + (i + 1);
+  function updateLabels(){
+    labels = textarea.value
+      .split("\n")
+      .map(x => x.trim())
+      .filter(Boolean);
 
-    const input = document.createElement("input");
-    input.value = text;
+    if(labels.length < 2){
+      labels = ["Felt 1", "Felt 2"];
+    }
 
-    inputsDiv.appendChild(label);
-    inputsDiv.appendChild(input);
-  });
-}
+    drawWheel();
+  }
 
-function updateLabels() {
-  const inputs = inputsDiv.querySelectorAll("input");
-  labels = Array.from(inputs).map((input, i) => input.value.trim() || "Felt " + (i + 1));
-  drawWheel();
-}
+  function drawWheel(){
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const radius = 330;
+    const slice = Math.PI * 2 / labels.length;
 
-function drawWheel() {
-  const w = canvas.width;
-  const h = canvas.height;
-  const cx = w / 2;
-  const cy = h / 2;
-  const radius = 330;
-  const slice = Math.PI * 2 / labels.length;
+    ctx.clearRect(0,0,w,h);
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(rotation);
 
-  ctx.clearRect(0, 0, w, h);
+    for(let i=0;i<labels.length;i++){
+      const start = i * slice;
+      const end = start + slice;
 
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rotation);
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.arc(0,0,radius,start,end);
+      ctx.closePath();
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fill();
 
-  for (let i = 0; i < labels.length; i++) {
-    const start = i * slice;
-    const end = start + slice;
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 5;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.rotate(start + slice / 2);
+      ctx.textAlign = "right";
+      ctx.fillStyle = "white";
+      ctx.font = labels.length > 10 ? "bold 20px system-ui" : "bold 26px system-ui";
+      ctx.shadowColor = "rgba(0,0,0,.45)";
+      ctx.shadowBlur = 4;
+      wrapText(ctx, labels[i], radius - 32, 8, 190, 27);
+      ctx.restore();
+    }
 
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, radius, start, end);
-    ctx.closePath();
-    ctx.fillStyle = colors[i];
+    ctx.arc(0,0,72,0,Math.PI*2);
+    ctx.fillStyle = "#111827";
     ctx.fill();
-
+    ctx.lineWidth = 8;
     ctx.strokeStyle = "white";
-    ctx.lineWidth = 5;
     ctx.stroke();
 
-    ctx.save();
-    ctx.rotate(start + slice / 2);
-    ctx.textAlign = "right";
-    ctx.fillStyle = "white";
-    ctx.font = "bold 28px system-ui, sans-serif";
-    ctx.shadowColor = "rgba(0,0,0,.45)";
-    ctx.shadowBlur = 4;
-    wrapText(ctx, labels[i], radius - 32, 8, 180, 30);
     ctx.restore();
   }
 
-  ctx.beginPath();
-  ctx.arc(0, 0, 72, 0, Math.PI * 2);
-  ctx.fillStyle = "#111827";
-  ctx.fill();
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = "white";
-  ctx.stroke();
+  function wrapText(ctx,text,x,y,maxWidth,lineHeight){
+    const words = text.split(" ");
+    let line = "";
+    const lines = [];
 
-  ctx.restore();
-}
-
-function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-  const words = text.split(" ");
-  let line = "";
-  const lines = [];
-
-  for (const word of words) {
-    const testLine = line + word + " ";
-    if (ctx.measureText(testLine).width > maxWidth && line !== "") {
-      lines.push(line.trim());
-      line = word + " ";
-    } else {
-      line = testLine;
+    for(const word of words){
+      const test = line + word + " ";
+      if(ctx.measureText(test).width > maxWidth && line !== ""){
+        lines.push(line.trim());
+        line = word + " ";
+      } else {
+        line = test;
+      }
     }
+
+    lines.push(line.trim());
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+
+    lines.forEach((lineText,i)=>{
+      ctx.fillText(lineText,x,startY + i * lineHeight);
+    });
   }
 
-  lines.push(line.trim());
+  canvas.addEventListener("click", e => {
+    if(spinning) return;
 
-  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
 
-  lines.forEach((lineText, index) => {
-    ctx.fillText(lineText, x, startY + index * lineHeight);
+    const x = (e.clientX - rect.left) * scaleX - canvas.width / 2;
+    const y = (e.clientY - rect.top) * scaleY - canvas.height / 2;
+
+    const distance = Math.sqrt(x*x + y*y);
+    if(distance < 80 || distance > 340) return;
+
+    let angle = Math.atan2(y,x) - rotation;
+    angle = ((angle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+
+    const slice = Math.PI*2 / labels.length;
+    chosenIndex = Math.floor(angle / slice);
   });
-}
 
-canvas.addEventListener("click", function(e) {
-  if (spinning) return;
+  function spin(){
+    if(spinning || spinBtn.disabled) return;
 
-  const rect = canvas.getBoundingClientRect();
+    updateLabels();
+    spinning = true;
+    result.textContent = "Spinner...";
 
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
+    const slice = Math.PI*2 / labels.length;
+    const targetIndex = chosenIndex !== null
+      ? chosenIndex
+      : Math.floor(Math.random() * labels.length);
 
-  const x = (e.clientX - rect.left) * scaleX - canvas.width / 2;
-  const y = (e.clientY - rect.top) * scaleY - canvas.height / 2;
+    const margin = slice * 0.18;
+    const randomInsideField = margin + Math.random() * (slice - margin * 2);
+    const targetAngle = targetIndex * slice + randomInsideField;
 
-  const distance = Math.sqrt(x * x + y * y);
-  if (distance < 80 || distance > 340) return;
+    const pointerAngle = -Math.PI / 2;
 
-  let angle = Math.atan2(y, x) - rotation;
-  angle = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    let finalRotation = pointerAngle - targetAngle;
+    finalRotation = ((finalRotation % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
 
-  const slice = Math.PI * 2 / labels.length;
-  chosenIndex = Math.floor(angle / slice);
-});
+    const fullSpins = 7 + Math.floor(Math.random() * 4);
+    const current = ((rotation % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
 
-function spin() {
-  if (spinning) return;
+    let difference = finalRotation - current;
+    if(difference < 0) difference += Math.PI*2;
+
+    const startRotation = rotation;
+    const endRotation = rotation + fullSpins * Math.PI*2 + difference;
+    const duration = 4200;
+    const startTime = performance.now();
+
+    function animate(now){
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 4);
+
+      rotation = startRotation + (endRotation - startRotation) * eased;
+      drawWheel();
+
+      if(progress < 1){
+        requestAnimationFrame(animate);
+      } else {
+        spinning = false;
+        rotation = ((rotation % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+        showWinner();
+        chosenIndex = null;
+        if(config.onFinished) config.onFinished();
+      }
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  function showWinner(){
+    const slice = Math.PI*2 / labels.length;
+    const pointerAngle = -Math.PI / 2;
+
+    let normalized = pointerAngle - rotation;
+    normalized = ((normalized % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+
+    const index = Math.floor(normalized / slice);
+    result.textContent = labels[index];
+  }
+
+  spinBtn.addEventListener("click", spin);
+  updateBtn.addEventListener("click", updateLabels);
 
   updateLabels();
 
-  spinning = true;
-  result.textContent = "Spinner...";
+  return {
+    enable(){ spinBtn.disabled = false; },
+    disable(){ spinBtn.disabled = true; },
+    setResult(text){ result.textContent = text; }
+  };
+}
 
-  const slice = Math.PI * 2 / labels.length;
-  const targetIndex = chosenIndex !== null
-    ? chosenIndex
-    : Math.floor(Math.random() * labels.length);
+let prizeWheel;
 
-  const margin = slice * 0.18; const randomInsideField = margin + Math.random() * (slice - margin * 2); const targetAngle = targetIndex * slice + randomInsideField;
-  const pointerAngle = -Math.PI / 2;
-
-  let finalRotation = pointerAngle - targetAngle;
-  finalRotation = ((finalRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-
-  const fullSpins = 7 + Math.floor(Math.random() * 4);
-  const startRotation = rotation;
-  const current = ((rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-
-  let difference = finalRotation - current;
-  if (difference < 0) difference += Math.PI * 2;
-
-  const endRotation = rotation + fullSpins * Math.PI * 2 + difference;
-  const duration = 4200;
-  const startTime = performance.now();
-
-  function animate(now) {
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 4);
-
-    rotation = startRotation + (endRotation - startRotation) * eased;
-    drawWheel();
-
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      spinning = false;
-      rotation = ((rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-      showWinner();
-      chosenIndex = null;
-    }
+const taskWheel = makeWheel({
+  canvasId: "taskWheel",
+  spinBtnId: "taskSpinBtn",
+  updateBtnId: "taskUpdateBtn",
+  textareaId: "taskText",
+  resultId: "taskResult",
+  onFinished(){
+    document.getElementById("doneBtn").disabled = false;
+    prizeWheel.disable();
+    prizeWheel.setResult("Låst");
   }
+});
 
-  requestAnimationFrame(animate);
-}
+prizeWheel = makeWheel({
+  canvasId: "prizeWheel",
+  spinBtnId: "prizeSpinBtn",
+  updateBtnId: "prizeUpdateBtn",
+  textareaId: "prizeText",
+  resultId: "prizeResult",
+  onFinished(){
+    prizeWheel.disable();
+  }
+});
 
-function showWinner() {
-  const slice = Math.PI * 2 / labels.length;
-  const pointerAngle = -Math.PI / 2;
+const doneBtn = document.getElementById("doneBtn");
 
-  let normalized = pointerAngle - rotation;
-  normalized = ((normalized % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-
-  const index = Math.floor(normalized / slice);
-  result.textContent = labels[index];
-}
-
-spinBtn.addEventListener("click", spin);
-updateBtn.addEventListener("click", updateLabels);
-
-makeInputs();
-drawWheel();
+doneBtn.addEventListener("click", () => {
+  prizeWheel.enable();
+  prizeWheel.setResult("Klar!");
+  doneBtn.disabled = true;
+});
 </script>
 
 </body>
