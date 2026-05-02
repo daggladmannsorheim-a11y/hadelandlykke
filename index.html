@@ -237,7 +237,7 @@ function spin() {
     ? chosenIndex
     : Math.floor(Math.random() * labels.length);
 
-  const targetAngle = targetIndex * slice + slice / 2;
+  const margin = slice * 0.18; const randomInsideField = margin + Math.random() * (slice - margin * 2); const targetAngle = targetIndex * slice + randomInsideField;
   const pointerAngle = -Math.PI / 2;
 
   let finalRotation = pointerAngle - targetAngle;
